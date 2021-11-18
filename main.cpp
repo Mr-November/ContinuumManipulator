@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
     Sleep(2 * 1000);
     m.MotRst(3);
 
-    Sleep(2 * 1000);
+    Sleep(5 * 1000);
 
     return 0;
 }
