@@ -69,12 +69,12 @@ int main(int argc, char* argv[])
     CtmMpt m(0, 0, 5);
     //m.SenRec();
     m.MotInit(3);
-    //m.MotFwd(3, true, 10000, 1);
-    //m.MotPos(3, 10000);
+    //m.MotFwd(3, true, 5000, 1);
+    //m.MotPos(3, 7000);
     Sleep(2 * 1000);
     m.MotRst(3);
 
-    Sleep(5 * 1000);
+    Sleep(1 * 1000);
 
     return 0;
 }

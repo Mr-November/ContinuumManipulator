@@ -44,7 +44,7 @@ CtmMpt::~CtmMpt()
 bool CtmMpt::MotInit(int id)
 {
 	bool output = true;
-	unsigned char reso[] = { 0x00, 0x10, 0x03, 0x80, 0x00, 0x04, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a };
+	unsigned char reso[] = { 0x00, 0x10, 0x03, 0x80, 0x00, 0x04, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 };
 
 	reso[0] = (unsigned char)id;
 	output &= this->MotWrt(reso, 15);
@@ -60,7 +60,7 @@ bool CtmMpt::MotInit(int* id)
 bool CtmMpt::MotRst(int id)
 {
 	bool output = true;
-	unsigned char rst_vel[] = {0x00, 0x10, 0x02, 0xb0, 0x00, 0x02, 0x04, 0x00, 0x00, 0xc3, 0x50};
+	unsigned char rst_vel[] = {0x00, 0x10, 0x02, 0xb0, 0x00, 0x02, 0x04, 0x00, 0x00, 0x13, 0x88};
 	unsigned char rst[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x10 };
 
 	rst_vel[0] = (unsigned char)id;
@@ -97,7 +97,6 @@ bool CtmMpt::MotFwd(int id, bool rvs, int freq, float dur)
 		fwd_2[4] = 0x40;
 	}
 
-	//printf("%08X\n", freq);
 	for (i = 0; i < 4; i++)
 	{
 		*(fwd_1 + 7 + i) = *((unsigned char*)&freq + 3 - i);
@@ -128,26 +127,25 @@ bool CtmMpt::MotPos(int id, int pos, int vel, int k_i, int k_f)
 	cmd_stt_on[0] = (unsigned char)id;
 	cmd_stt_off[0] = (unsigned char)id;
 
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 9 + i) = *((unsigned char*)&pos + 1 - i);
+		*(cmd_pos + 11 + i) = *((unsigned char*)&pos + 3 - i);
 	}
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 11 + i) = *((unsigned char*)&vel + 1 - i);
+		*(cmd_pos + 15 + i) = *((unsigned char*)&vel + 3 - i);
 	}
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 13 + i) = *((unsigned char*)&k_i + 1 - i);
+		*(cmd_pos + 19 + i) = *((unsigned char*)&k_i + 3 - i);
 	}
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 15 + i) = *((unsigned char*)&k_f + 1 - i);
+		*(cmd_pos + 23 + i) = *((unsigned char*)&k_f + 3 - i);
 	}
 
-	//output &= this->MotWrt(cmd_pos, 27);
+	output &= this->MotWrt(cmd_pos, 27);
 	output &= this->MotWrt(cmd_stt_on, 6);
-	Sleep(2 * 1000);
 	output &= this->MotWrt(cmd_stt_off, 6);
 
 	return output;
