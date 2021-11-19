@@ -44,10 +44,26 @@ CtmMpt::~CtmMpt()
 bool CtmMpt::MotInit(int id)
 {
 	bool output = true;
-	unsigned char reso[] = { 0x00, 0x10, 0x03, 0x80, 0x00, 0x04, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 };
+	unsigned char cmd_reso[] = { 0x00, 0x10, 0x03, 0x80, 0x00, 0x04, 0x08,
+									0x00, 0x00, 0x00, 0x01, // Electronic gear A = 1.
+									0x00, 0x00, 0x00, 0x01 }; // Electronic gear B = 1, resolution = 30,000Hz.
+	unsigned char cmd_parity[] = { 0x00, 0x10, 0x13, 0x86, 0x00, 0x02, 0x04, 0x00, 0x00, 0x00, 0x00 }; // Parity: none.
+	unsigned char cmd_rst_paras[] = { 0x00, 0x10, 0x02, 0xb0, 0x00, 0x06, 0x0c,
+										0x00, 0x00, 0x13, 0x88, // Operation speed = 5000Hz.
+										0x00, 0x00, 0x07, 0xd0, // Acceleration = 2000Hz.
+										0x00, 0x00, 0x00, 0x00 }; // Starting speed = 0Hz.
 
-	reso[0] = (unsigned char)id;
-	output &= this->MotWrt(reso, 15);
+	lsn_buf.Clear();
+
+	cmd_reso[0] = (unsigned char)id;
+	cmd_parity[0] = (unsigned char)id;
+	cmd_rst_paras[0] = (unsigned char)id;
+
+	output &= this->MotWrt(cmd_reso, 15);
+	output &= this->MotWrt(cmd_parity, 11);
+	output &= this->MotWrt(cmd_rst_paras, 19);
+
+	this->MotRst(id);
 
 	return output;
 }
@@ -60,13 +76,13 @@ bool CtmMpt::MotInit(int* id)
 bool CtmMpt::MotRst(int id)
 {
 	bool output = true;
-	unsigned char rst_vel[] = {0x00, 0x10, 0x02, 0xb0, 0x00, 0x02, 0x04, 0x00, 0x00, 0x13, 0x88};
-	unsigned char rst[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x10 };
+	unsigned char cmd_rst[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x10 };
 
-	rst_vel[0] = (unsigned char)id;
-	rst[0] = (unsigned char)id;
-	output &= this->MotWrt(rst_vel, 11);
-	output &= this->MotWrt(rst, 6);
+	cmd_rst[0] = (unsigned char)id;
+	output &= this->MotWrt(cmd_rst, 6);
+
+	while (!this->MotHmEnd(id));
+	std::cout << ">>> At home." << std::endl;
 
 	return output;
 }
@@ -76,104 +92,84 @@ bool CtmMpt::MotRst(int* id)
 	return false;
 }
 
-bool CtmMpt::MotFwd(int id, bool rvs, int freq, float dur)
-{
-	bool output = true;
-	unsigned char fwd_1[] = { 0x00, 0x10, 0x04, 0x80, 0x00, 0x02, 0x04, 0x00, 0x00, 0x00, 0x00 };
-	unsigned char fwd_2[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x00 };
-	unsigned char fwd_3[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x00 };
-	int i = 0;
-
-	fwd_1[0] = (unsigned char)id;
-	fwd_2[0] = (unsigned char)id;
-	fwd_3[0] = (unsigned char)id;
-
-	if (rvs)
-	{
-		fwd_2[4] = 0x80;
-	}
-	else
-	{
-		fwd_2[4] = 0x40;
-	}
-
-	for (i = 0; i < 4; i++)
-	{
-		*(fwd_1 + 7 + i) = *((unsigned char*)&freq + 3 - i);
-	}
-
-	output &= this->MotWrt(fwd_1, 11);
-	output &= this->MotWrt(fwd_2, 6);
-	Sleep(dur * 1000);
-	output &= this->MotWrt(fwd_3, 6);
-
-	return output;
-}
-
 bool CtmMpt::MotPos(int id, int pos, int vel, int k_i, int k_f)
 {
 	bool output = true;
 	int i = 0;
-	unsigned char cmd_pos[] = { 0x00, 0x10, 0x18, 0x00, 0x00, 0x0a, 0x014,
-								0x00, 0x00, 0x00, 0x02, // Mode 2.
+	unsigned char cmd_pos_paras[] = { 0x00, 0x10, 0x18, 0x00, 0x00, 0x0a, 0x14,
+								0x00, 0x00, 0x00, 0x02, // Incremental positioning (based on command position).
 								0x00, 0x00, 0x00, 0x00, // Index 11-14, position.
-								0x00, 0x00, 0x00, 0x00, // Index 15-18, velocity.
-								0x00, 0x00, 0x00, 0x00, // Index 19-22, start slope.
-								0x00, 0x00, 0x00, 0x00 }; // Index 23-26, stop slope.
-	unsigned char cmd_stt_on[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x08 };
-	unsigned char cmd_stt_off[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x00 };
+								0x00, 0x00, 0x00, 0x00, // Index 15-18, speed.
+								0x00, 0x00, 0x00, 0x00, // Index 19-22, starting rate.
+								0x00, 0x00, 0x00, 0x00 }; // Index 23-26, stopping deceleration.
+	unsigned char cmd_pos_on[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x08 };
+	unsigned char cmd_pos_off[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x00 };
 
-	cmd_pos[0] = (unsigned char)id;
-	cmd_stt_on[0] = (unsigned char)id;
-	cmd_stt_off[0] = (unsigned char)id;
+	cmd_pos_paras[0] = (unsigned char)id;
+	cmd_pos_on[0] = (unsigned char)id;
+	cmd_pos_off[0] = (unsigned char)id;
 
 	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 11 + i) = *((unsigned char*)&pos + 3 - i);
+		*(cmd_pos_paras + 11 + i) = *((unsigned char*)&pos + 3 - i);
 	}
 	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 15 + i) = *((unsigned char*)&vel + 3 - i);
+		*(cmd_pos_paras + 15 + i) = *((unsigned char*)&vel + 3 - i);
 	}
 	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 19 + i) = *((unsigned char*)&k_i + 3 - i);
+		*(cmd_pos_paras + 19 + i) = *((unsigned char*)&k_i + 3 - i);
 	}
 	for (i = 0; i < 4; i++)
 	{
-		*(cmd_pos + 23 + i) = *((unsigned char*)&k_f + 3 - i);
+		*(cmd_pos_paras + 23 + i) = *((unsigned char*)&k_f + 3 - i);
 	}
 
-	output &= this->MotWrt(cmd_pos, 27);
-	output &= this->MotWrt(cmd_stt_on, 6);
-	output &= this->MotWrt(cmd_stt_off, 6);
+	output &= this->MotWrt(cmd_pos_paras, 27);
+	output &= this->MotWrt(cmd_pos_on, 6);
+	output &= this->MotWrt(cmd_pos_off, 6);
+
+	while (!this->MotInPos(id));
+	std::cout << ">>> Arrived." << std::endl;
 
 	return output;
 }
 
-bool CtmMpt::MotPos(int* id, float* pos)
+bool CtmMpt::MotVel(int id, int vel, float dur, int k_i, int k_f)
 {
 	bool output = true;
+	unsigned char cmd_vel_paras[] = { 0x00, 0x10, 0x18, 0x00, 0x00, 0x0a, 0x14,
+										0x00, 0x00, 0x00, 0x10, // Continuous (speed control).
+										0x00, 0x00, 0x00, 0x00, // Do not change.
+										0x00, 0x00, 0x00, 0x00, // Index 15-18, speed.
+										0x00, 0x00, 0x00, 0x00, // Index 19-22, starting rate.
+										0x00, 0x00, 0x00, 0x00 }; // Index 23-26, stopping deceleration.
+	unsigned char cmd_vel_on[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x08 };
+	unsigned char cmd_vel_off[] = { 0x00, 0x06, 0x00, 0x7d, 0x00, 0x20 };
+	int i = 0;
 
+	cmd_vel_paras[0] = (unsigned char)id;
+	cmd_vel_on[0] = (unsigned char)id;
+	cmd_vel_off[0] = (unsigned char)id;
 
+	for (i = 0; i < 4; i++)
+	{
+		*(cmd_vel_paras + 15 + i) = *((unsigned char*)&vel + 3 - i);
+	}
+	for (i = 0; i < 4; i++)
+	{
+		*(cmd_vel_paras + 19 + i) = *((unsigned char*)&k_i + 3 - i);
+	}
+	for (i = 0; i < 4; i++)
+	{
+		*(cmd_vel_paras + 23 + i) = *((unsigned char*)&k_f + 3 - i);
+	}
 
-	return output;
-}
-
-bool CtmMpt::MotVel(int id, float vel)
-{
-	bool output = true;
-
-
-
-	return output;
-}
-
-bool CtmMpt::MotVel(int* id, float* vel)
-{
-	bool output = true;
-
-
+	output &= this->MotWrt(cmd_vel_paras, 27);
+	output &= this->MotWrt(cmd_vel_on, 6);
+	Sleep(dur * 1000);
+	output &= this->MotWrt(cmd_vel_off, 6);
 
 	return output;
 }
@@ -237,18 +233,61 @@ bool CtmMpt::MotWrt(unsigned char* p_buf, unsigned int len)
 	p_new_buf[len + 1] = crc >> 8;
 
 	// Write to motors.
-	std::cout << "Wrt{ ";
-	for (i = 0; i < len + 2; i++)
+	if (p_new_buf[1] != 0x03) // If the command is not to read the motor register.
 	{
-		printf("%02X ", p_new_buf[i]);
+		std::cout << "Wrt{ ";
+		for (i = 0; i < len + 2; i++)
+		{
+			printf("%02X ", p_new_buf[i]);
+		}
+		std::cout << "} to motors." << std::endl;
 	}
-	std::cout << "} to motors." << std::endl;
+	
 	output &= this->mot_port.WriteData(p_new_buf, len + 2);
-	Sleep(10);
-	lsn_buf.Disp();
+
+	if (p_new_buf[1] != 0x03)
+	{
+		while (lsn_buf.GetLen() != 8);
+		lsn_buf.Disp();
+		lsn_buf.Clear();
+	}
 
 	// Delete the new array.
 	delete[] p_new_buf;
 
 	return output;
+}
+
+bool CtmMpt::MotInPos(int id)
+{
+	bool in_pos = false;
+	unsigned char BIT_IN_POS = 0x40;
+	unsigned char cmd_rec[] = { 0x00, 0x03, 0x00, 0x7f, 0x00, 0x01 };
+
+	cmd_rec[0] = (unsigned char)id;
+
+	this->MotWrt(cmd_rec, 6);
+
+	while (lsn_buf.GetLen() != 7);
+	in_pos = ((lsn_buf.GetChar(3) & BIT_IN_POS) == BIT_IN_POS);
+	lsn_buf.Clear();
+
+	return in_pos;
+}
+
+bool CtmMpt::MotHmEnd(int id)
+{
+	bool hm_end = false;
+	unsigned char BIT_HM_END = 0x10;
+	unsigned char cmd_rec[] = { 0x00, 0x03, 0x00, 0x7f, 0x00, 0x01 };
+
+	cmd_rec[0] = (unsigned char)id;
+
+	this->MotWrt(cmd_rec, 6);
+
+	while (lsn_buf.GetLen() != 7);
+	hm_end = ((lsn_buf.GetChar(4) & BIT_HM_END) == BIT_HM_END);
+	lsn_buf.Clear();
+
+	return hm_end;
 }

@@ -10,6 +10,7 @@ public:
 
 public:
 	void AddChar(unsigned char c);
+	unsigned char GetChar(int idx);
 	int GetLen();
 	void Clear();
 	void Disp();

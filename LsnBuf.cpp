@@ -7,7 +7,7 @@ std::mutex mtx;
 
 LsnBuf::LsnBuf()
 {
-	this->p_buf = new unsigned char[512]();
+	this->p_buf = new unsigned char[64]();
 	if (this->p_buf == NULL)
 	{
 		std::cout << "ERR >>> Failed to allocate memory." << std::endl;
@@ -25,6 +25,11 @@ void LsnBuf::AddChar(unsigned char c)
 	this->p_buf[this->buf_len++] = c;
 
 	return;
+}
+
+unsigned char LsnBuf::GetChar(int idx)
+{
+	return this->p_buf[idx];
 }
 
 int LsnBuf::GetLen()
