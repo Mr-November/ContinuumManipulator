@@ -4,12 +4,12 @@
 #include "SerialPort.h"
 #include "LsnBuf.h"
 
-//extern LsnBuf lsn_buf;
+extern LsnBuf lsn_buf;
 extern std::mutex mtx;
 
 bool CSerialPort::s_bExit = false;
 
-CSerialPort::CSerialPort(LsnBuf& buf) :m_hListenThread(INVALID_HANDLE_VALUE), lsn_buf(buf)
+CSerialPort::CSerialPort() :m_hListenThread(INVALID_HANDLE_VALUE)
 {
 	m_hComm = INVALID_HANDLE_VALUE;
 	m_hListenThread = INVALID_HANDLE_VALUE;
@@ -18,7 +18,7 @@ CSerialPort::CSerialPort(LsnBuf& buf) :m_hListenThread(INVALID_HANDLE_VALUE), ls
 	return;
 }
 
-CSerialPort::~CSerialPort(void)
+CSerialPort::~CSerialPort()
 {
 	CloseListenTread();
 	ClosePort();
@@ -303,7 +303,7 @@ unsigned int WINAPI CSerialPort::ListenThread(void* pParam)
 			cRecved = 0x00;
 			if (pSerialPort->ReadChar(cRecved))
 			{
-				this->lsn_buf.AddChar((unsigned char)cRecved);
+				lsn_buf.AddChar((unsigned char)cRecved);
 				//printf("%02X ", (unsigned char)cRecved);
 				continue;
 			}

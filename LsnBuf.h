@@ -17,6 +17,8 @@ public:
 	void Clear();
 	void DispMot();
 	void DispSen(int group_no);
+	void Copy(unsigned char* dst, int begin, int len);
+	void Paste(unsigned char* src, int begin, int len);
 
 private:
 	unsigned char* p_buf;

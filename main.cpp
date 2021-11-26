@@ -39,6 +39,7 @@ int main(int argc, char* argv[])
     //}
 
     m.SenInit();
+    m.SenRec();
 
     return 0;
 }

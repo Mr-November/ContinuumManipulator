@@ -25,14 +25,12 @@ public:
 	bool SenRec();
 
 private:
-	LsnBuf sen_1_buf;
-	LsnBuf sen_2_buf;
-	LsnBuf mot_buf;
 	CSerialPort sen_1_port;
 	CSerialPort sen_2_port;
 	CSerialPort mot_port;
-	static const int MOT_NO = 9;
-	int ID[MOT_NO];
+	//static const int MOT_NO = 9;
+	//int ID[MOT_NO];
+	//int POS[MOT_NO];
 
 private:
 	bool MotWrt(const unsigned char* p_buf, const unsigned int len);

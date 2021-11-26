@@ -102,3 +102,42 @@ void LsnBuf::DispSen(int group_no)
 
 	return;
 }
+
+void LsnBuf::Copy(unsigned char* dst, int begin, int len)
+{
+	int i = 0, j = 0;
+
+	if (begin >= 0 && begin + len <= this->buf_len)
+	{
+		for (i = begin; i < begin + len; i++)
+		{
+			dst[j++] = this->p_buf[i];
+		}
+	}
+	else
+	{
+		std::cout << "ERR >>> Wrong buffer copy." << std::endl;
+	}
+
+	return;
+}
+
+void LsnBuf::Paste(unsigned char* src, int begin, int len)
+{
+	int i = 0;
+
+	if (begin >= 0)
+	{
+		this->buf_len = begin;
+		for (i = 0; i < len; i++)
+		{
+			this->p_buf[this->buf_len++] = src[i];
+		}
+	}
+	else
+	{
+		std::cout << "ERR >>> Wrong buffer paste." << std::endl;
+	}
+
+	return;
+}

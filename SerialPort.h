@@ -5,8 +5,8 @@
 class CSerialPort
 {
 public:
-	CSerialPort(LsnBuf& buf);
-	~CSerialPort(void);
+	CSerialPort();
+	~CSerialPort();
 
 public:
 	bool InitPort(unsigned int portNo,
@@ -31,5 +31,4 @@ private:
 	static bool s_bExit; // Thread exit flag.
 	volatile HANDLE m_hListenThread; // Thread handle.
 	CRITICAL_SECTION m_csCommunicationSync;
-	LsnBuf& lsn_buf;
 };

@@ -8,15 +8,8 @@
 LsnBuf lsn_buf;
 
 CtmMpt::CtmMpt(unsigned int sen_1_port_no, unsigned int sen_2_port_no, unsigned int mot_port_no)
-	: sen_1_buf(), sen_2_buf, mot_buf(), sen_1_port(sen_1_buf), sen_2_port(sen_2_buf), mot_port(mot_buf)
 {
 	bool is_opened = true;
-	int i = 0;
-
-	for (i = 0; i < CtmMpt::MOT_NO; i++)
-	{
-		;
-	}
 
 	if ( !this->sen_1_port.InitPort(sen_1_port_no))
 	{
@@ -197,14 +190,11 @@ bool CtmMpt::MotVel(int id, int vel, float dur, int k_i, int k_f)
 bool CtmMpt::SenInit()
 {
 	bool output = true;
+	std::string cmd_stop_gsd("AT+GSD=STOP");
 	std::string cmd_uart_paras("AT+UARTCFG=115200,8,1.00,N");
 	std::string cmd_smpf("AT+SMPF=80");
 
-	//41 54 2b 47 4f 44 0d 0a AT+GOD\r\n
-	//AA 55 00 1B 00 00 C1 48 F2 C1 71 71 2F C2 9D E1 94 C1 78 A9 6B C1 70 57 E5 C1 9B 8C E3 C1 E7
-	//41 54 2b 47 53 44 0d 0a AT+GSD\r\n
-	//41 54 2b 47 53 44 3d 53 54 4f 50 0d 0a AT+GSD=STOP\r\n
-
+	output &= this->SenWrt(cmd_stop_gsd);
 	output &= this->SenWrt(cmd_uart_paras);
 	output &= this->SenWrt(cmd_smpf);
 
@@ -304,18 +294,34 @@ bool CtmMpt::SenWrt(const std::string& str)
 	}
 	std::cout << "\\r\\n } to sensors." << std::endl;
 	output &= this->sen_1_port.WriteData(cmd, len + 2); // To sensor group 1.
-	if (str != "AT+GOD" && str != "AT+GSD")
+	if (str != "AT+GOD" && str != "AT+GSD" && str != "AT+GSD=STOP")
 	{
 		while (lsn_buf.GetEndChar() != 0x0a);
 		lsn_buf.DispSen(1);
 		lsn_buf.Clear();
 	}
+	else if (str == "AT+GSD=STOP")
+	{
+		lsn_buf.Clear();
+	}
+	else
+	{
+		while (lsn_buf.GetLen() != 31);
+	}
 	output &= this->sen_2_port.WriteData(cmd, len + 2); // To sensor group 2.
-	if (str != "AT+GOD" && str != "AT+GSD")
+	if (str != "AT+GOD" && str != "AT+GSD" && str != "AT+GSD=STOP")
 	{
 		while (lsn_buf.GetEndChar() != 0x0a);
 		lsn_buf.DispSen(2);
 		lsn_buf.Clear();
+	}
+	else if (str == "AT+GSD=STOP")
+	{
+		lsn_buf.Clear();
+	}
+	else
+	{
+		while (lsn_buf.GetLen() != 62);
 	}
 
 	// Delete the new array.
@@ -370,5 +376,124 @@ bool CtmMpt::MotHmEndAll()
 
 void CtmMpt::SenRecAnalyse()
 {
+	// For debugging.
+	//unsigned char f[] = { 0xAA, 0x55,
+	//						0x00, 0x1B,
+	//						0x00, 0x00,
+	//						0xC1, 0x48, 0xF2, 0xC1,//6
+	//						0x71, 0x71, 0x2F, 0xC2,//10
+	//						0x9D, 0xE1, 0x94, 0xC1,
+	//						0x78, 0xA9, 0x6B, 0xC1,
+	//						0x70, 0x57, 0xE5, 0xC1,
+	//						0x9B, 0x8C, 0xE3, 0xC1,
+	//						0xE7,
+	//						0xAA, 0x55,
+	//						0x00, 0x1B,
+	//						0x00, 0x00,
+	//						0xC1, 0x48, 0xF2, 0xC1,
+	//						0x71, 0x71, 0x2F, 0xC2,
+	//						0x9D, 0xE1, 0x94, 0xC1,
+	//						0x78, 0xA9, 0x6B, 0xC1,
+	//						0x70, 0x57, 0xE5, 0xC1,
+	//						0x9B, 0x8C, 0xE3, 0xC1,
+	//						0xE7 };
+	//unsigned char g[] = { 0xAA, 0x55,
+	//						0x00, 0x1B,
+	//						0xC4, 0xC7,
+	//						0x01, 0x6A, 0xF4, 0xC0,//6
+	//						0xEF, 0x7D, 0x33, 0xC0,//10
+	//						0x49, 0x62, 0xC9, 0xC0,
+	//						0xA2, 0x5C, 0xC6, 0xBD,
+	//						0xA6, 0x19, 0x8F, 0xBD,
+	//						0xAF, 0xDA, 0x69, 0x3E,
+	//						0x6E,
+	//						0xAA, 0x55,
+	//						0x00, 0x1B,
+	//						0xC4, 0xC7,
+	//						0x01, 0x6A, 0xF4, 0xC0,//6
+	//						0xEF, 0x7D, 0x33, 0xC0,//10
+	//						0x49, 0x62, 0xC9, 0xC0,
+	//						0xA2, 0x5C, 0xC6, 0xBD,
+	//						0xA6, 0x19, 0x8F, 0xBD,
+	//						0xAF, 0xDA, 0x69, 0x3E,
+	//						0x6E };
+	unsigned char fdb[2][31] = { {0x00}, {0x00} };
+	int pkg_len[2] = { 0, 0 };
+	int pkg_num[2] = { 0, 0 };
+	float ch_val[2][6] = { {0x00}, {0x00} };
+	int i = 0, j = 0;
+
+	// For debugging.
+	//lsn_buf.Paste(f, 0, 62);
+	//lsn_buf.DispMot();
+
+	lsn_buf.Copy(fdb[0], 0, 31);
+	lsn_buf.Copy(fdb[1], 31, 31);
+	lsn_buf.Clear();
+
+	// For debugging.
+	//for (i = 0; i < 31; i++)
+	//{
+	//	printf("%02X ", fdb[0][i]);
+	//}
+	//std::cout << std::endl;
+	//for (i = 0; i < 31; i++)
+	//{
+	//	printf("%02X ", fdb[1][i]);
+	//}
+	//std::cout << std::endl;
+
+	if (fdb[0][0] != 0xaa || fdb[0][1] != 0x55)
+	{
+		std::cout << "ERR >>> Wrong format of sensor group 1 feedback." << std::endl;
+
+		return;
+	}
+	if (fdb[1][0] != 0xaa || fdb[1][1] != 0x55)
+	{
+		std::cout << "ERR >>> Wrong format of sensor group 2 feedback." << std::endl;
+
+		return;
+	}
+
+	// Package length.
+	*((unsigned char*)&pkg_len[0] + 1) = fdb[0][2];
+	*((unsigned char*)&pkg_len[0] + 0) = fdb[0][3];
+	*((unsigned char*)&pkg_len[1] + 1) = fdb[1][2];
+	*((unsigned char*)&pkg_len[1] + 0) = fdb[1][3];
+	printf("Package length:  %d Bytes, %d Bytes.\n", pkg_len[0], pkg_len[1]);
+
+	// Package number.
+	*((unsigned char*)&pkg_num[0] + 1) = fdb[0][4];
+	*((unsigned char*)&pkg_num[0] + 0) = fdb[0][5];
+	*((unsigned char*)&pkg_num[1] + 1) = fdb[1][4];
+	*((unsigned char*)&pkg_num[1] + 0) = fdb[1][5];
+	printf("Package number:  No.%d, No.%d.\n", pkg_num[0], pkg_num[1]);
+
+	// Sensor value.
+	for (i = 0; i < 6; i++)
+	{
+		for (j = 0; j < 4; j++)
+		{
+			*((unsigned char*)&ch_val[0][i] + j) = fdb[0][4 * i + 6 + j];
+			*((unsigned char*)&ch_val[1][i] + j) = fdb[1][4 * i + 6 + j];
+		}
+	}
+	std::cout << "Group 1 channel: ( ";
+	for (i = 0; i < 6; i++)
+	{
+		printf("%.4f ", ch_val[0][i]);
+	}
+	std::cout << ")." << std::endl;
+	std::cout << "Group 2 channel: ( ";
+	for (i = 0; i < 6; i++)
+	{
+		printf("%.4f ", ch_val[1][i]);
+	}
+	std::cout << ")." << std::endl;
+
+	// Correction code.
+	printf("Correction code: %02X, %02X.\n", fdb[0][30], fdb[1][30]);
+
 	return;
 }
