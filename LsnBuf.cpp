@@ -1,6 +1,6 @@
-#include <mutex>
 #include <stdio.h>
 #include <iostream>
+#include <mutex>
 #include "LsnBuf.h"
 
 std::mutex mtx;
@@ -32,6 +32,11 @@ unsigned char LsnBuf::GetChar(int idx)
 	return this->p_buf[idx];
 }
 
+unsigned char LsnBuf::GetEndChar()
+{
+	return this->p_buf[this->buf_len - 1];
+}
+
 int LsnBuf::GetLen()
 {
 	return (this->buf_len);
@@ -51,7 +56,7 @@ void LsnBuf::Clear()
 	return;
 }
 
-void LsnBuf::Disp()
+void LsnBuf::DispMot()
 {
 	int i = 0;
 
@@ -62,7 +67,36 @@ void LsnBuf::Disp()
 	{
 		printf("%02X ", this->p_buf[i]);
 	}
-	std::cout << "}." << std::endl;
+	std::cout << "} from motors." << std::endl;
+
+	mtx.unlock();
+
+	return;
+}
+
+void LsnBuf::DispSen(int group_no)
+{
+	int i = 0;
+
+	mtx.lock();
+
+	std::cout << "Buf{ ";
+	for (i = 0; i < this->buf_len - 2; i++)
+	{
+		printf("%c", this->p_buf[i]);
+	}
+	if (group_no == 1)
+	{
+		std::cout << "\\r\\n } from sensor group 1." << std::endl;
+	}
+	else if (group_no == 2)
+	{
+		std::cout << "\\r\\n } from sensor group 2." << std::endl;
+	}
+	else
+	{
+		std::cout << "\\r\\n } from which sensor group?" << std::endl;
+	}
 
 	mtx.unlock();
 
